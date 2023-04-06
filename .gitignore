@@ -1,4 +1,5 @@
-build
+build/*
+!build/.keep
 .vscode
 .cache
 
