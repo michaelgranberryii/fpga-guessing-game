@@ -25,10 +25,11 @@ logic rst;
 logic c_sel;
 logic [(keypad_size -1):0] keys;
 logic [(keypad_size -1):0] keys_pulse;
-logic [(btn_size -1):0] btn_debounce;
-logic [(btn_size -1):0] btn_pulse;
+logic btn1_debounce;
+logic btn1_pulse;
 logic [19:0] count_div;
 logic [6:0] disp_ctrl_out;
+logic [6:0] seg_reg;
 logic [6:0] seg1_reg;
 logic [6:0] seg2_reg;
 logic btn_press_toggle;
@@ -66,11 +67,10 @@ disp_ctrl dc_i (
     .disp_val(keys),
     .seg_out(disp_ctrl_out)
 );
+
 // ----------------------------------
 //---------------------------- Button
 // ----------------------------------
-// ----------------------------------
-
 debounce
 #(
     .clk_freq(clk_freq),
@@ -81,19 +81,21 @@ db_i
     .clk(clk),
     .rst(rst),
     .button(btn[1]),
-    .result(btn_debounce[1])
+    .result(btn1_debounce)
 ); 
 
 single_pulse_detector sp_i (
     .clk(clk),
     .rst(rst),
-    .input_signal(btn_debounce[1]),
-    .output_pulse(btn_pulse[1])
+    .input_signal(btn1_debounce),
+    .output_pulse(btn1_pulse)
 );
 
 // ----------------------------------
 //---------------------------- Design
 // ----------------------------------
+
+// Chip select
 always_ff@(posedge rst, posedge clk) begin
     if (rst) begin
         c_sel <= 1'b0;
@@ -101,7 +103,7 @@ always_ff@(posedge rst, posedge clk) begin
     end
     else begin
         if (sw == 0) begin
-            if (btn_pulse[1]) begin
+            if (btn1_pulse) begin
                 c_sel <= ~c_sel;
             end
         end
@@ -115,6 +117,7 @@ always_ff@(posedge rst, posedge clk) begin
     end
 end
 
+// Capture ssd value
 always_ff@(posedge clk, posedge rst) begin
     if (rst) begin
         seg1_reg <= 7'b0;
@@ -142,16 +145,23 @@ always_ff@(posedge clk, posedge rst) begin
     end
 end
 
-always_ff@(posedge clk) begin
-    if (sw == 0)
-        seg <= seg1_reg;
-    else 
-        if (chip_sel)
-            seg <= seg1_reg;
-        else
-            seg <= seg2_reg;
+// Show ssd value
+always_ff@(posedge clk, posedge rst) begin
+    if (rst) begin
+        seg_reg <= 0;
+    end
+    else begin
+        if (sw == 0)
+            seg_reg <= seg1_reg;
+        else 
+            if (chip_sel)
+                seg_reg <= seg1_reg;
+            else
+                seg_reg <= seg2_reg;
+    end
 end
 
+assign seg = seg_reg;
 assign rst = btn[0];
 assign led = sw;
 assign chip_sel = c_sel;

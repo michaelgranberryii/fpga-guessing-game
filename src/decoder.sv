@@ -12,7 +12,7 @@ module decoder
 );
 
 localparam keypad_size = 16;
-localparam max_delay = 15;
+localparam max_delay = 16;
 
 logic [3:0] row_int;
 logic [(keypad_size-1):0] keys_int;
@@ -20,6 +20,7 @@ logic [(keypad_size-1):0] keys_stored;
 logic [(keypad_size-1):0] presses;
 logic [31:0] count;
 
+// Generate 16 debounce modules for each key
 genvar i;
 generate
     for (i = 0; i<keypad_size; i++) begin
@@ -38,7 +39,7 @@ generate
     end    
 endgenerate
 
-integer  j;
+// Sync row
 always_ff @(posedge clk) begin : synchronizer
     if (rst) begin
         row_int <= 0;
@@ -48,16 +49,19 @@ always_ff @(posedge clk) begin : synchronizer
     end
 end
 
+// Capure keys
+integer  j;
 always_ff @( posedge rst, posedge clk ) begin : capture_keys 
     if (rst) begin
         col <= 4'b1111;
         keys_int <= 0;
+        keys_stored <= 0;
         count <= 0;
         presses <= 0;
     end
     else begin
         presses <= 0;
-        if (count < max_delay) begin
+        if (count < max_delay-1) begin // wait for 320 ns
             count <= count + 1;
         end
         else begin

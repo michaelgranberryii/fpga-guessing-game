@@ -14,13 +14,11 @@ module debounce
         output logic result
     );
 
-    // declarations
     logic sig;
     logic [31:0] count;
-    
     localparam max_delay = clk_freq*stable_time/1024;
 
-    // model
+    // Debounce button
     always_ff @( posedge clk, posedge rst ) begin
         if (rst) begin
             sig <= 1'b0;

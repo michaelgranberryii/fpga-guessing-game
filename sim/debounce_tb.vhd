@@ -1,6 +1,7 @@
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE std.env.stop;
+
 ENTITY debounce_tb IS
 END debounce_tb;
 
@@ -9,13 +10,13 @@ ARCHITECTURE Behavioral OF debounce_tb IS
     SIGNAL rst_tb : STD_LOGIC;
     SIGNAL button_tb : STD_LOGIC;
     SIGNAL result_tb : STD_LOGIC;
-    CONSTANT CP : TIME := 8 ns;
-    CONSTANT bounce : TIME := 1 ns;
+    CONSTANT CP : TIME := 20 ns;
+    CONSTANT stable_wait_time : integer := 10;
 BEGIN
     uut : ENTITY work.debounce
         GENERIC MAP(
-            clk_freq => 125_000_000,
-            stable_time => 10)
+            clk_freq => 1024,
+            stable_time => 5)
         PORT MAP(
             clk => clk_tb,
             rst => rst_tb,
@@ -33,53 +34,53 @@ BEGIN
     BEGIN
          button_tb <= '0';
          rst_tb <= '1';
-         WAIT FOR 5 ms;
+         WAIT FOR CP;
          rst_tb <= '0';
-         WAIT FOR 5 ms;
+         WAIT FOR CP;
 
         -- bouncing input
         button_tb <= '0';
-        WAIT FOR 1 ms;
+        WAIT FOR CP;
         button_tb <= '1';
-        WAIT FOR 1 ms;
+        WAIT FOR CP;
         button_tb <= '0';
-        WAIT FOR 1 ms;
+        WAIT FOR CP;
         button_tb <= '1';
-        WAIT FOR 1 ms;
+        WAIT FOR CP;
         button_tb <= '0';
-        WAIT FOR 1 ms;
+        WAIT FOR CP;
         button_tb <= '1';
-        WAIT FOR 1 ms;
+        WAIT FOR CP;
         button_tb <= '0';
-        WAIT FOR 1 ms;
+        WAIT FOR CP;
 
         -- stable input
         button_tb <= '1';
-        WAIT FOR 20 ms;
+        WAIT FOR stable_wait_time*CP;
         button_tb <= '0';
-        WAIT FOR 20 ms;
+        WAIT FOR stable_wait_time*CP;
 
          -- bouncing input
         button_tb <= '0';
-        WAIT FOR 1 ms;
+        WAIT FOR CP;
         button_tb <= '1';
-        WAIT FOR 1 ms;
+        WAIT FOR CP;
         button_tb <= '0';
-        WAIT FOR 1 ms;
+        WAIT FOR CP;
         button_tb <= '1';
-        WAIT FOR 1 ms;
+        WAIT FOR CP;
         button_tb <= '0';
-        WAIT FOR 1 ms;
+        WAIT FOR CP;
         button_tb <= '1';
-        WAIT FOR 1 ms;
+        WAIT FOR CP;
         button_tb <= '0';
-        WAIT FOR 1 ms;
+        WAIT FOR CP;
 
         -- stable input
         button_tb <= '1';
-        WAIT FOR 20 ms;
+        WAIT FOR stable_wait_time*CP;
         button_tb <= '0';
-        WAIT FOR 20 ms;
+        WAIT FOR stable_wait_time*CP;
 
         stop;
     END PROCESS;

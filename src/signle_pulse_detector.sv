@@ -9,11 +9,11 @@ module single_pulse_detector
         output logic output_pulse
     );
         
-    // declar
+    
     logic ff0;
     logic ff1;
 
-    // model
+    // Register input signal
     always_ff@(posedge clk, posedge rst) begin
         if (rst) begin
             ff0 <= 1'b0;
@@ -25,6 +25,7 @@ module single_pulse_detector
         end
     end
 
+    // Produce output pulse type
     always_comb begin
         if (detect_type == 2'b00)
             output_pulse = ~ff1 & ff0;
