@@ -1,45 +1,78 @@
-module ssd_top (
+module ssd_top
+#(
+    parameter clk_freq = 50_000_000,
+    parameter stable_time = 10
+)
+(
     input logic clk, 
-    input logic [3:0] btn,
-    input logic [3:0] sw,
-    output logic [3:0] led,
+    input logic [1:0] btn,
+    input logic sw,
+    output logic led,
     output logic [6:0] seg,
     output logic chip_sel,
-    inout logic [7:0] keypd
+    input logic [3:0] row,
+    output logic [3:0] col
 );
 
-parameter clk_freq = 125_000_000;
-parameter stable_time = 10;
+// ----------------------------------
+//------------------ Logic and Params
+// ----------------------------------
+localparam max_delay = clk_freq*stable_time/1024;
+localparam keypad_size = 16;
+localparam btn_size = 2;
 
 logic rst;
-logic btn1_debounce;
-logic btn1_pulse;
 logic c_sel;
-logic [3:0] decode_out_w;
-logic is_a_key_pressed;
+logic [(keypad_size -1):0] keys;
+logic [(keypad_size -1):0] keys_pulse;
+logic [(btn_size -1):0] btn_debounce;
+logic [(btn_size -1):0] btn_pulse;
+logic [19:0] count_div;
+logic [6:0] disp_ctrl_out;
+logic [6:0] seg1_reg;
+logic [6:0] seg2_reg;
+logic btn_press_toggle;
 
-
-
-decoder dc_i (
+// ----------------------------------
+//---------------------------- Keypad
+// ----------------------------------
+decoder  
+#(
+    .clk_freq(clk_freq),
+    .stable_time(stable_time)
+)
+decoder_i
+(
     .clk(clk),
     .rst(rst),
-    .row(keypd[7:4]),
-    .col(keypd[3:0]),
-    .decoder_out(decode_out_w),
-    .is_a_key_pressed(is_a_key_pressed)
+    .row(row),
+    .col(col),
+    .keys(keys)
 );
 
-disp_ctrl ssd_i_sw (
-    .disp_val(sw),
-    .seg_out(seg)
+genvar n;
+generate
+    for (n = 0; n<keypad_size; n++) begin
+        single_pulse_detector sp_i (
+            .clk(clk),
+            .rst(rst),
+            .input_signal(keys[n]),
+            .output_pulse(keys_pulse[n])
+        );
+    end    
+endgenerate
+
+disp_ctrl dc_i (
+    .disp_val(keys),
+    .seg_out(disp_ctrl_out)
 );
+// ----------------------------------
+//---------------------------- Button
+// ----------------------------------
+// ----------------------------------
 
-// disp_ctrl ssd_i_kp (
-//     .disp_val(decode_out_w),
-//     .seg_out(seg)
-// );
-
-debounce #(
+debounce
+#(
     .clk_freq(clk_freq),
     .stable_time(stable_time)
 )
@@ -48,32 +81,78 @@ db_i
     .clk(clk),
     .rst(rst),
     .button(btn[1]),
-    .result(btn1_debounce)
+    .result(btn_debounce[1])
+); 
+
+single_pulse_detector sp_i (
+    .clk(clk),
+    .rst(rst),
+    .input_signal(btn_debounce[1]),
+    .output_pulse(btn_pulse[1])
 );
 
-single_pulse_detector
-    #(
-        .detect_type(2'b0)
-    )
-    pls_i_1
-    (
-        .clk(clk),
-        .rst(rst),
-        .input_signal(btn1_debounce),
-        .output_pulse(btn1_pulse)
-    );
-
-always_ff@(posedge rst, posedge btn1_pulse) begin
+// ----------------------------------
+//---------------------------- Design
+// ----------------------------------
+always_ff@(posedge rst, posedge clk) begin
     if (rst) begin
         c_sel <= 1'b0;
+        count_div <= 'b0;
     end
-    else if (btn1_pulse) begin
-        c_sel <= ~c_sel;
+    else begin
+        if (sw == 0) begin
+            if (btn_pulse[1]) begin
+                c_sel <= ~c_sel;
+            end
+        end
+        else begin
+            count_div <= count_div + 'b1;
+            if (count_div == max_delay) begin
+                count_div <= 'b0;
+                c_sel <= ~c_sel;
+            end
+        end
     end
 end
 
+always_ff@(posedge clk, posedge rst) begin
+    if (rst) begin
+        seg1_reg <= 7'b0;
+        seg2_reg <= 7'b0;
+        btn_press_toggle <= 1'b1;
+    end
+    else begin
+        if (|keys_pulse) begin
+            if (sw == 0) begin
+                
+                seg1_reg <= disp_ctrl_out;
+            end
+            else begin
+                if (btn_press_toggle) begin
+                    seg1_reg <= disp_ctrl_out;
+                    seg2_reg <= 0;
+                    btn_press_toggle <= 0;
+                end
+                else begin
+                    seg2_reg <= disp_ctrl_out;
+                    btn_press_toggle <= 1;
+                end
+            end
+        end
+    end
+end
+
+always_ff@(posedge clk) begin
+    if (sw == 0)
+        seg <= seg1_reg;
+    else 
+        if (chip_sel)
+            seg <= seg1_reg;
+        else
+            seg <= seg2_reg;
+end
+
 assign rst = btn[0];
-assign keypd_w = keypd;
 assign led = sw;
 assign chip_sel = c_sel;
     

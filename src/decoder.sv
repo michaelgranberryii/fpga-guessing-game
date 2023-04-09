@@ -1,143 +1,114 @@
-module decoder (
+module decoder 
+#(
+    parameter clk_freq = 50_000_000,
+    parameter stable_time = 10
+)
+(
     input logic clk,
     input logic rst,
     input logic [3:0] row,
     output logic [3:0] col,
-    output logic [3:0] decoder_out,
-    output logic is_a_key_pressed
+    output logic [15:0] keys
 );
 
-// declar
-logic [26:0] sclk;
-logic [3:0] decode_reg;
-logic is_a_key_pressed_reg;
+localparam keypad_size = 16;
+localparam max_delay = 15;
 
-// model
-always_ff @ (posedge clk, posedge rst) begin
+logic [3:0] row_int;
+logic [(keypad_size-1):0] keys_int;
+logic [(keypad_size-1):0] keys_stored;
+logic [(keypad_size-1):0] presses;
+logic [31:0] count;
+
+genvar i;
+generate
+    for (i = 0; i<keypad_size; i++) begin
+       debounce
+    #(
+        .clk_freq(clk_freq),
+        .stable_time(stable_time)
+    )
+    db_i
+    (
+        .clk(clk),
+        .rst(rst),
+        .button(keys_stored[i]),
+        .result(keys[i])
+    ); 
+    end    
+endgenerate
+
+integer  j;
+always_ff @(posedge clk) begin : synchronizer
     if (rst) begin
-        decode_reg <= 4'b0;
-        is_a_key_pressed_reg <= 1'b0;
+        row_int <= 0;
     end
     else begin
-        if (sclk == 26'd100000) begin
-            // C1
-            col <= 4'b0111;
-            sclk <= sclk + 1;
+        row_int <= row;
+    end
+end
+
+always_ff @( posedge rst, posedge clk ) begin : capture_keys 
+    if (rst) begin
+        col <= 4'b1111;
+        keys_int <= 0;
+        count <= 0;
+        presses <= 0;
+    end
+    else begin
+        presses <= 0;
+        if (count < max_delay) begin
+            count <= count + 1;
         end
-        else if (sclk == 26'd100008) begin
-            // R1
-            if (row == 4'b0111) begin
-                decode_reg <= 4'b0001; // 1
-                is_a_key_pressed_reg <= 1'b1;
-            end
-            // R2
-            else if (row == 4'b1011) begin
-                decode_reg <= 4'b0100; //4
-                is_a_key_pressed_reg <= 1'b1;
-            end
-            // R3
-            else if (row == 4'b1011) begin
-                decode_reg <= 4'b0111; // 7
-                is_a_key_pressed_reg <= 1'b1;
-            end
-            // R4
-            else if (row == 4'b1011) begin
-                decode_reg <= 4'b0000; // 0
-                is_a_key_pressed_reg <= 1'b1;
-            end
-            sclk <= sclk + 1;
-        end
-        // C2
-        else if (sclk == 26'd200000) begin
-            // C1
-            col <= 4'b0111;
-            sclk <= sclk + 1;
-        end
-        else if (sclk == 26'd200008) begin
-            // R1
-            if (row == 4'b0111) begin
-                decode_reg <= 4'b0010; // 2
-                is_a_key_pressed_reg <= 1'b1;
-            end
-            // R2
-            else if (row == 4'b1011) begin
-                decode_reg <= 4'b0101; // 5
-                is_a_key_pressed_reg <= 1'b1;
-            end
-            // R3
-            else if (row == 4'b1101) begin
-                decode_reg <= 4'b1111; // 8
-                is_a_key_pressed_reg <= 1'b1;
-            end
-            // R4
-            else if (row == 4'b1110) begin
-                decode_reg <= 4'b1111; // F
-                is_a_key_pressed_reg <= 1'b1;
-            end
-            sclk <= sclk + 1;
-        end
-        // C3
-        else if (sclk == 26'd300000) begin
-            // C1
-            col <= 4'b1011;
-            sclk <= sclk + 1;
-        end
-        else if (sclk == 26'd300008) begin
-            // R1
-            if (row == 4'b0111) begin
-                decode_reg <= 4'b0011; // 3
-                is_a_key_pressed_reg <= 1'b1;
-            end
-            // R2
-            else if (row == 4'b1011) begin
-                decode_reg <= 4'b0110; // 6
-                is_a_key_pressed_reg <= 1'b1;
-            end
-            // R3
-            else if (row == 4'b1101) begin
-                decode_reg <= 4'b1001; // 9
-                is_a_key_pressed_reg <= 1'b1;
-            end
-            // R4
-            else if (row == 4'b1110) begin
-                decode_reg <= 4'b1110; // E
-                is_a_key_pressed_reg <= 1'b1;
-            end
-            sclk <= sclk + 1;
-        end
-        // C4
-        else if (sclk == 26'd400000) begin
-            // C1
-            col <= 4'b0111;
-            sclk <= sclk + 1;
-        end
-        else if (sclk == 26'd400008) begin
-            // R1
-            if (row == 4'b0111) begin
-                decode_reg <= 4'b1010; // A
-                is_a_key_pressed_reg <= 1'b1;
-            end
-            // R2
-            else if (row == 4'b1011) begin
-                decode_reg <= 4'b1011; // B
-                is_a_key_pressed_reg <= 1'b1;
-            end
-            // R3
-            else if (row == 4'b1101) begin
-                decode_reg <= 4'b1100; // C
-                is_a_key_pressed_reg <= 1'b1;
-            end
-            // R4
-            else if (row == 4'b1110) begin
-                decode_reg <= 4'b1101; // D
-                is_a_key_pressed_reg <= 1'b1;
-            end
-            sclk <= sclk + 1;
+        else begin
+            count <= 0;
+            case (col)
+                4'b1111: begin     
+                    for (j = 0; j < keypad_size; j++) begin
+                        if (keys_int[j] == 1) begin
+                            presses <= presses + 1;
+                        end
+                    end
+                    if (presses < 2) begin
+                        keys_stored <= keys_int;
+                    end
+                    else begin
+                        keys_stored <= 0;
+                    end
+                    keys_int <= 0;
+                    col <= 4'b0111;
+                end
+                4'b0111: begin
+                    keys_int[1] <= ~row_int[3];
+                    keys_int[4] <= ~row_int[2];
+                    keys_int[7] <= ~row_int[1];
+                    keys_int[0] <= ~row_int[0];
+                    col <= 4'b1011;
+                end
+                4'b1011: begin
+                    keys_int[2] <= ~row_int[3];
+                    keys_int[5] <= ~row_int[2];
+                    keys_int[8] <= ~row_int[1];
+                    keys_int[15] <= ~row_int[0];
+                    col <= 4'b1101;
+                end
+                4'b1101: begin
+                    keys_int[3] <= ~row_int[3];
+                    keys_int[6] <= ~row_int[2];
+                    keys_int[9] <= ~row_int[1];
+                    keys_int[14] <= ~row_int[0];
+                    col <= 4'b1110;
+                end
+                4'b1110: begin
+                    keys_int[10] <= ~row_int[3];
+                    keys_int[11] <= ~row_int[2];
+                    keys_int[12] <= ~row_int[1];
+                    keys_int[13] <= ~row_int[0];
+                    col <= 4'b1111;
+                end
+            endcase
         end
     end
-end;
-
-assign is_a_key_pressed = is_a_key_pressed_reg;
-assign decoder_out = decode_reg;
+end
 
 endmodule

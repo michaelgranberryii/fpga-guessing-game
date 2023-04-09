@@ -5,6 +5,7 @@ module debounce
     #(
         parameter clk_freq = 50_000_000,
         parameter stable_time = 10
+        
     )
     (
         input logic clk,
@@ -16,7 +17,8 @@ module debounce
     // declarations
     logic sig;
     logic [31:0] count;
-   
+    
+    localparam max_delay = clk_freq*stable_time/1024;
 
     // model
     always_ff @( posedge clk, posedge rst ) begin
@@ -26,7 +28,7 @@ module debounce
         end
         else begin
             if (button) begin
-                if (count == (clk_freq*stable_time/1024) - 1) begin
+                if (count == max_delay) begin
                     sig <= 1'b1;
                 end
                 count <= count + 1;

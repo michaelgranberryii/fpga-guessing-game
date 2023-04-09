@@ -15,25 +15,25 @@ module single_pulse_detector
 
     // model
     always_ff@(posedge clk, posedge rst) begin
-        if (rst == 1) begin
+        if (rst) begin
             ff0 <= 1'b0;
             ff1 <= 1'b0;
         end
-        else if (clk == 1) begin
+        else begin
             ff0 <= input_signal;
             ff1 <= ff0;
         end
     end
 
     always_comb begin
-        if (detect_type == 2'd0)
+        if (detect_type == 2'b00)
             output_pulse = ~ff1 & ff0;
-        else if (detect_type == 2'd1)
-            output_pulse = ~ff0 & ff0;
-        else if (detect_type == 2'd3)
+        else if (detect_type == 2'b01)
+            output_pulse = ~ff0 & ff1;
+        else if (detect_type == 2'b10)
             output_pulse = ff0 ^ ff1;
         else
-            output_pulse = 1'd0;
+            output_pulse = 1'b0;
     end
 
 
