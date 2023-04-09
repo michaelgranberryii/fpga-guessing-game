@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 module decoder_tb;
     parameter clk_freq = 1024;
-    parameter stable_time = 1;
+    parameter stable_time = 0;
 
     logic clk_tb;
     logic rst_tb;
