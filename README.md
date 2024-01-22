@@ -6,6 +6,10 @@ Zybo Z7-10 FPGA SoC Development Board: Two Digit Guessing Game with Keypad and S
 
 This project implements a number guessing game using SystemVerilog on an FPGA board. The game involves a roll-back counter that counts from 1 to F and resets to 0 after reaching F. The user can stop the counter and record the current number as the target number by pressing push button 1. The user then needs to input a single-digit or two-digit number using the 16-button keypad, and the FPGA will display the input on the Seven Segment Display (SSD). To help the user guess the target number, the Zybo Red RGB LED will turn on if the input is greater than the target number, and the Zybo Blue RGB LED will turn on if the input is less than the target number. When the user guesses the target number correctly, the Zybo Green RGB LED will flash ten times to indicate a successful guess.
 
+## Demo Video
+
+[Demo on Youtube](https://youtu.be/3U9fnR_vUDI)
+
 ## Dependencies
 
 ### Hardware
